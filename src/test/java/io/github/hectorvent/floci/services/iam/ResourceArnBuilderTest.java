@@ -145,6 +145,32 @@ class ResourceArnBuilderTest {
      * ARN format says. A user at {@code /eng/} is not named by the ARN without it, so reading the
      * path from the store rather than deriving a root-path ARN is what makes a scoped deny bind.
      */
+    /**
+     * The delegation family passes an id where the ARN-carrying actions pass an ARN, so its ARN is
+     * minted from the request. Without this the actions fall back to {@code *} and a policy naming
+     * one request never applies, which is the fail-open {@code UNRESOLVED_TYPES} used to cover
+     * while none of them was dispatched.
+     */
+    @Test
+    void iamNamesTheDelegationRequestABlockOfActionsActsOn() {
+        String id = "dr-0123456789abcdef01234567";
+        for (String action : List.of("AssociateDelegationRequest", "AcceptDelegationRequest",
+                "RejectDelegationRequest", "GetDelegationRequest")) {
+            assertEquals("arn:aws:iam::000000000000:delegation-request/" + id,
+                    resourceOf(builder, "Action=" + action + "&DelegationRequestId=" + id), action);
+        }
+    }
+
+    @Test
+    void iamLeavesADelegationRequestItIsAboutToMintAtTheWildcard() {
+        // IAM assigns the id, so the create names no resource to authorize against.
+        assertEquals("*", resourceOf(builder,
+                "Action=CreateDelegationRequest&Description=d&RequestorWorkflowId=w"));
+        // AWS publishes no authorizable action for the update at all, so it carries no type.
+        assertEquals("*", resourceOf(builder,
+                "Action=UpdateDelegationRequest&DelegationRequestId=dr-0123456789abcdef01234567"));
+    }
+
     @Test
     void iamReadsThePathOfTheStoredUser() {
         String arn = "arn:aws:iam::000000000000:user/eng/deep/bob";
