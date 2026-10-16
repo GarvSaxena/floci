@@ -34,6 +34,14 @@ class HookScriptsTest {
     }
 
     @Test
+    void windowsMatchesExtensionsInAnyCase() {
+        assertThat(HookScripts.command("SETUP.BAT", true, "/bin/sh"), equalTo(List.of("cmd", "/c", "SETUP.BAT")));
+        assertThat(HookScripts.canRun("Init.PS1", true, "/bin/sh"), is(true));
+        assertThat(HookScripts.isScript("SEED.SH", false), is(false));
+        assertThat(HookScripts.isScript("seed.sh", false), is(true));
+    }
+
+    @Test
     void windowsIsDetectedFromOsName() {
         assertThat(HookScripts.isWindows("Windows Server 2022"), is(true));
         assertThat(HookScripts.isWindows("Mac OS X"), is(false));

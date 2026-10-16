@@ -91,6 +91,19 @@ class InitializationHooksRunnerTest {
     }
 
     @Test
+    @DisplayName("On Windows, a hook's extension matches in any case")
+    void windowsRunsUppercaseExtensions(@TempDir Path root) throws IOException, InterruptedException {
+        Path ready = Files.createDirectories(root.resolve("ready.d"));
+        Files.createFile(ready.resolve("01-SETUP.BAT"));
+        Files.createFile(ready.resolve("02-Init.PS1"));
+
+        runner(root.toString(), "Windows 11").run(InitializationHook.READY);
+
+        Mockito.verify(hookScriptExecutorMock).run(ready.resolve("01-SETUP.BAT").toFile());
+        Mockito.verify(hookScriptExecutorMock).run(ready.resolve("02-Init.PS1").toFile());
+    }
+
+    @Test
     @DisplayName("On Windows, .sh hooks run when a shell other than /bin/sh is configured")
     void windowsRunsShellScriptsWithAConfiguredShell(@TempDir Path root) throws IOException, InterruptedException {
         Path ready = Files.createDirectories(root.resolve("ready.d"));

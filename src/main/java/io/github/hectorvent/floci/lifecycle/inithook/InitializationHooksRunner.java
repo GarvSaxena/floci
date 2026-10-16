@@ -13,6 +13,8 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @ApplicationScoped
 public class InitializationHooksRunner {
@@ -23,6 +25,7 @@ public class InitializationHooksRunner {
     private final InitLifecycleState initLifecycleState;
     private final String hooksRoot;
     private final FilenameFilter scriptFileFilter;
+    private final Set<String> warnedSkips = ConcurrentHashMap.newKeySet();
 
     @Inject
     public InitializationHooksRunner(final HookScriptExecutor hookScriptExecutor,
@@ -40,17 +43,24 @@ public class InitializationHooksRunner {
         this.hooksRoot = emulatorConfig.initHooks().dir();
         boolean windows = HookScripts.isWindows(osName);
         String shell = emulatorConfig.initHooks().shellExecutable();
-        this.scriptFileFilter = (ignored, name) -> runnable(name, windows, shell);
+        this.scriptFileFilter = (dir, name) -> runnable(dir, name, windows, shell);
     }
 
-    private static boolean runnable(String name, boolean windows, String shell) {
-        if (!HookScripts.isScript(name)) {
+    /**
+     * Whether a file in a hook directory runs here. Windows script types are ignored without a word
+     * on Linux and macOS; a {@code .sh} hook Windows cannot run is warned about once per file, not
+     * on every directory listing.
+     */
+    private boolean runnable(File dir, String name, boolean windows, String shell) {
+        if (!HookScripts.isScript(name, windows)) {
             return false;
         }
         if (HookScripts.canRun(name, windows, shell)) {
             return true;
         }
-        LOG.warnv("Skipping hook script {0}: it cannot run on this platform (shell {1})", name, shell);
+        if (windows && warnedSkips.add(new File(dir, name).getAbsolutePath())) {
+            LOG.warnv("Skipping hook script {0}: it cannot run on this platform (shell {1})", name, shell);
+        }
         return false;
     }
 
