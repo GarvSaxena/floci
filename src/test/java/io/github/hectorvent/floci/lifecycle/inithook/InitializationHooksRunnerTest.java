@@ -1,14 +1,15 @@
 package io.github.hectorvent.floci.lifecycle.inithook;
 
+import io.github.hectorvent.floci.config.EmulatorConfig;
 import io.github.hectorvent.floci.lifecycle.InitLifecycleState;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentMatchers;
 import org.mockito.InOrder;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,8 +31,86 @@ class InitializationHooksRunnerTest {
     @Mock
     private InitLifecycleState initLifecycleStateMock;
 
-    @InjectMocks
     private InitializationHooksRunner initializationHooksRunner;
+
+    @BeforeEach
+    void setUp() {
+        initializationHooksRunner = runner(InitializationHook.DEFAULT_ROOT, "Linux");
+    }
+
+    private InitializationHooksRunner runner(String root, String osName) {
+        return runner(root, osName, "/bin/sh");
+    }
+
+    private InitializationHooksRunner runner(String root, String osName, String shell) {
+        EmulatorConfig config = Mockito.mock(EmulatorConfig.class, Mockito.RETURNS_DEEP_STUBS);
+        Mockito.lenient().when(config.initHooks().dir()).thenReturn(root);
+        Mockito.lenient().when(config.initHooks().shellExecutable()).thenReturn(shell);
+        return new InitializationHooksRunner(hookScriptExecutorMock, initLifecycleStateMock, config, osName);
+    }
+
+    @Test
+    @DisplayName("A configured hooks dir replaces the default Floci root")
+    void configuredDirReplacesDefaultRoot(@TempDir Path root) throws IOException, InterruptedException {
+        Files.createDirectories(root.resolve("ready.d"));
+        Files.createFile(root.resolve("ready.d").resolve("01-seed.sh"));
+
+        runner(root.toString(), "Linux").run(InitializationHook.READY);
+
+        Mockito.verify(hookScriptExecutorMock).run(root.resolve("ready.d").resolve("01-seed.sh").toFile());
+    }
+
+    @Test
+    @DisplayName("Stop hooks are read from both stop.d and shutdown.d under a configured dir")
+    void configuredDirKeepsBothStopDirectories(@TempDir Path root) throws IOException, InterruptedException {
+        Files.createDirectories(root.resolve("stop.d"));
+        Files.createDirectories(root.resolve("shutdown.d"));
+        Files.createFile(root.resolve("stop.d").resolve("01-a.sh"));
+        Files.createFile(root.resolve("shutdown.d").resolve("02-b.sh"));
+
+        runner(root.toString(), "Linux").run(InitializationHook.STOP);
+
+        InOrder inOrder = Mockito.inOrder(hookScriptExecutorMock);
+        inOrder.verify(hookScriptExecutorMock).run(root.resolve("stop.d").resolve("01-a.sh").toFile());
+        inOrder.verify(hookScriptExecutorMock).run(root.resolve("shutdown.d").resolve("02-b.sh").toFile());
+    }
+
+    @Test
+    @DisplayName("On Windows, PowerShell and cmd hooks run and .sh hooks are skipped with the default shell")
+    void windowsRunsNativeScriptsAndSkipsShell(@TempDir Path root) throws IOException, InterruptedException {
+        Path ready = Files.createDirectories(root.resolve("ready.d"));
+        Files.createFile(ready.resolve("01-seed.ps1"));
+        Files.createFile(ready.resolve("02-seed.cmd"));
+        Files.createFile(ready.resolve("03-seed.sh"));
+
+        runner(root.toString(), "Windows 11").run(InitializationHook.READY);
+
+        Mockito.verify(hookScriptExecutorMock).run(ready.resolve("01-seed.ps1").toFile());
+        Mockito.verify(hookScriptExecutorMock).run(ready.resolve("02-seed.cmd").toFile());
+        Mockito.verify(hookScriptExecutorMock, Mockito.never()).run(ready.resolve("03-seed.sh").toFile());
+    }
+
+    @Test
+    @DisplayName("On Windows, .sh hooks run when a shell other than /bin/sh is configured")
+    void windowsRunsShellScriptsWithAConfiguredShell(@TempDir Path root) throws IOException, InterruptedException {
+        Path ready = Files.createDirectories(root.resolve("ready.d"));
+        Files.createFile(ready.resolve("01-seed.sh"));
+
+        runner(root.toString(), "Windows 11", "C:/Program Files/Git/bin/bash.exe").run(InitializationHook.READY);
+
+        Mockito.verify(hookScriptExecutorMock).run(ready.resolve("01-seed.sh").toFile());
+    }
+
+    @Test
+    @DisplayName("On Linux and macOS, Windows-only scripts are not picked up")
+    void unixIgnoresWindowsScripts(@TempDir Path root) throws IOException, InterruptedException {
+        Path ready = Files.createDirectories(root.resolve("ready.d"));
+        Files.createFile(ready.resolve("01-seed.ps1"));
+
+        runner(root.toString(), "Linux").run(InitializationHook.READY);
+
+        Mockito.verifyNoInteractions(hookScriptExecutorMock);
+    }
 
     @Test
     @DisplayName("Should execute shell scripts in sorted order")
