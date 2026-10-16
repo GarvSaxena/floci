@@ -50,7 +50,6 @@ class InitializationHooksRunnerTest {
     }
 
     @Test
-    @DisplayName("A configured hooks dir replaces the default Floci root")
     void configuredDirReplacesDefaultRoot(@TempDir Path root) throws IOException, InterruptedException {
         Files.createDirectories(root.resolve("ready.d"));
         Files.createFile(root.resolve("ready.d").resolve("01-seed.sh"));
@@ -61,7 +60,6 @@ class InitializationHooksRunnerTest {
     }
 
     @Test
-    @DisplayName("Stop hooks are read from both stop.d and shutdown.d under a configured dir")
     void configuredDirKeepsBothStopDirectories(@TempDir Path root) throws IOException, InterruptedException {
         Files.createDirectories(root.resolve("stop.d"));
         Files.createDirectories(root.resolve("shutdown.d"));
@@ -76,7 +74,6 @@ class InitializationHooksRunnerTest {
     }
 
     @Test
-    @DisplayName("On Windows, PowerShell and cmd hooks run and .sh hooks are skipped with the default shell")
     void windowsRunsNativeScriptsAndSkipsShell(@TempDir Path root) throws IOException, InterruptedException {
         Path ready = Files.createDirectories(root.resolve("ready.d"));
         Files.createFile(ready.resolve("01-seed.ps1"));
@@ -91,7 +88,6 @@ class InitializationHooksRunnerTest {
     }
 
     @Test
-    @DisplayName("On Windows, a hook's extension matches in any case")
     void windowsRunsUppercaseExtensions(@TempDir Path root) throws IOException, InterruptedException {
         Path ready = Files.createDirectories(root.resolve("ready.d"));
         Files.createFile(ready.resolve("01-SETUP.BAT"));
@@ -104,7 +100,6 @@ class InitializationHooksRunnerTest {
     }
 
     @Test
-    @DisplayName("On Windows, .sh hooks run when a shell other than /bin/sh is configured")
     void windowsRunsShellScriptsWithAConfiguredShell(@TempDir Path root) throws IOException, InterruptedException {
         Path ready = Files.createDirectories(root.resolve("ready.d"));
         Files.createFile(ready.resolve("01-seed.sh"));
@@ -115,7 +110,6 @@ class InitializationHooksRunnerTest {
     }
 
     @Test
-    @DisplayName("On Linux and macOS, Windows-only scripts are not picked up")
     void unixIgnoresWindowsScripts(@TempDir Path root) throws IOException, InterruptedException {
         Path ready = Files.createDirectories(root.resolve("ready.d"));
         Files.createFile(ready.resolve("01-seed.ps1"));
@@ -261,7 +255,7 @@ class InitializationHooksRunnerTest {
         Files.createFile(tempDir.resolve("01-setup.sh"));
         InitializationHook hook = inlineMock(InitializationHook.class);
         Mockito.when(hook.getName()).thenReturn("startup");
-        Mockito.when(hook.getPrimaryPaths()).thenReturn(List.of(tempDir.toFile()));
+        Mockito.when(hook.getPrimaryPaths(Mockito.anyString())).thenReturn(List.of(tempDir.toFile()));
         Mockito.when(hook.getCompatPaths()).thenReturn(List.of());
 
         Assertions.assertTrue(initializationHooksRunner.hasHooks(hook));
@@ -273,7 +267,7 @@ class InitializationHooksRunnerTest {
         Files.createFile(tempDir.resolve("01-setup.sh"));
         InitializationHook hook = inlineMock(InitializationHook.class);
         Mockito.when(hook.getName()).thenReturn("startup");
-        Mockito.when(hook.getPrimaryPaths()).thenReturn(List.of());
+        Mockito.when(hook.getPrimaryPaths(Mockito.anyString())).thenReturn(List.of());
         Mockito.when(hook.getCompatPaths()).thenReturn(List.of(tempDir.toFile()));
 
         Assertions.assertTrue(initializationHooksRunner.hasHooks(hook));
@@ -284,7 +278,7 @@ class InitializationHooksRunnerTest {
     void hasHooksShouldReturnFalseWhenDirectoryIsEmpty(@TempDir Path tempDir) {
         InitializationHook hook = inlineMock(InitializationHook.class);
         Mockito.when(hook.getName()).thenReturn("startup");
-        Mockito.when(hook.getPrimaryPaths()).thenReturn(List.of(tempDir.toFile()));
+        Mockito.when(hook.getPrimaryPaths(Mockito.anyString())).thenReturn(List.of(tempDir.toFile()));
         Mockito.when(hook.getCompatPaths()).thenReturn(List.of());
 
         Assertions.assertFalse(initializationHooksRunner.hasHooks(hook));
@@ -295,7 +289,7 @@ class InitializationHooksRunnerTest {
     void hasHooksShouldReturnFalseWhenDirectoryDoesNotExist() {
         InitializationHook hook = inlineMock(InitializationHook.class);
         Mockito.when(hook.getName()).thenReturn("startup");
-        Mockito.when(hook.getPrimaryPaths()).thenReturn(List.of(new File("/nonexistent/path")));
+        Mockito.when(hook.getPrimaryPaths(Mockito.anyString())).thenReturn(List.of(new File("/nonexistent/path")));
         Mockito.when(hook.getCompatPaths()).thenReturn(List.of());
 
         Assertions.assertFalse(initializationHooksRunner.hasHooks(hook));
@@ -311,7 +305,7 @@ class InitializationHooksRunnerTest {
 
         InitializationHook hook = inlineMock(InitializationHook.class);
         Mockito.when(hook.getName()).thenReturn("ready");
-        Mockito.when(hook.getPrimaryPaths()).thenReturn(List.of(primaryDir.toFile()));
+        Mockito.when(hook.getPrimaryPaths(Mockito.anyString())).thenReturn(List.of(primaryDir.toFile()));
         Mockito.when(hook.getCompatPaths()).thenReturn(List.of(compatDir.toFile()));
 
         initializationHooksRunner.run(hook);

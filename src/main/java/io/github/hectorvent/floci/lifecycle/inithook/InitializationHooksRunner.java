@@ -120,10 +120,7 @@ public class InitializationHooksRunner {
      */
     private List<File> findMergedScripts(final InitializationHook hook) {
         final Map<String, File> merged = new LinkedHashMap<>();
-        final List<File> primary = InitializationHook.DEFAULT_ROOT.equals(hooksRoot)
-                ? hook.getPrimaryPaths()
-                : hook.getPrimaryPaths(hooksRoot);
-        for (final File dir : primary) {
+        for (final File dir : hook.getPrimaryPaths(hooksRoot)) {
             collectScripts(hook.getName(), dir, merged);
         }
         for (final File dir : hook.getCompatPaths()) {

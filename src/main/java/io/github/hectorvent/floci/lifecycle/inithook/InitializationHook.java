@@ -36,12 +36,10 @@ public enum InitializationHook {
         return responseKey;
     }
 
-    /** Floci-native directories for this phase under the default root. First occurrence of a filename wins. */
-    public List<File> getPrimaryPaths() {
-        return getPrimaryPaths(DEFAULT_ROOT);
-    }
-
-    /** Floci-native directories for this phase under {@code root} ({@code floci.init-hooks.dir}). */
+    /**
+     * Floci-native directories for this phase under {@code root} ({@code floci.init-hooks.dir}). First
+     * occurrence of a filename wins.
+     */
     public List<File> getPrimaryPaths(String root) {
         return primarySubdirs.stream().map(dir -> Path.of(root, dir).toFile()).toList();
     }
